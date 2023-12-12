@@ -14,24 +14,18 @@ def main(subs, skips) -> None:
     fpaths = layout.get(extension = 'eeg',
                         return_type = 'filename')
 
-    for (fpath, sub, task, run) in iter_BIDSPaths(fpaths):
+    for fp in glob.glob('../data/bids/sub-*/'):
+        regex = re.compile(r'\d+')
+        sub = regex.findall(fpath)[0]
 
-        # if subs were given but sub is not in subs, don't preprocess
-        if bool(subs) and sub not in subs:
-            continue
+#         # skip if subject is already preprocessed
+#         save_fpath, sink = get_save_path(DERIV_ROOT, sub, task, run)
+#         if os.path.isfile(save_fpath) and sub not in subs:
+#             print(f"Subject {sub} run {run} is already preprocessed")
+#             continue
 
-        # if sub in skips, don't preprocess
-        if sub in skips:
-            continue
-
-        # skip if subject is already preprocessed
-        save_fpath, sink = get_save_path(DERIV_ROOT, sub, task, run)
-        if os.path.isfile(save_fpath) and sub not in subs:
-            print(f"Subject {sub} run {run} is already preprocessed")
-            continue
-
-        print("subprocess.check_call(\"sbatch ./preprocess.py %s %s %s\" % (sub, task, run), shell=True)")
-        subprocess.check_call("sbatch ./preprocess.py %s %s %s" % (sub, task, run), shell=True)
+        print("subprocess.check_call(\"sbatch ./preprocess.py {sub}\" % (sub), shell=True)")
+        subprocess.check_call("sbatch ./preprocess.py %s" % (sub), shell=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run preprocess.py over given subjects')

@@ -27,6 +27,10 @@ def main(fpath, sub) -> None:
     raw = mne.io.read_raw_brainvision(fpath)
     raw.load_data()
 
+    # add some info BIDS will want
+    print("Add line_freq to raw.info")
+    raw.info['line_freq'] = 60 # the power line frequency in the building we collected in
+    
     # Extract events from raw file
     print("Set annotations")
     events, event_ids = mne.events_from_annotations(raw)

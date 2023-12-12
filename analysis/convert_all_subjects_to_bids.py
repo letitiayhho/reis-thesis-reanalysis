@@ -13,8 +13,7 @@ def main(subs, skips) -> None:
         sub = regex.findall(fpath)[0]
 
         # Run script on file
-        #subprocess.check_call("sbatch ./convert_to_bids.py %s %s" % (fpath, sub), shell=True)
-        subprocess.check_call("./convert_to_bids.py %s %s" % (fpath, sub), shell=True)
+        subprocess.check_call("sbatch ./convert_to_bids.py %s %s" % (fpath, sub), shell=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run convert-to-bids.py over given subjects')

@@ -10,69 +10,63 @@
 
 import sys
 import gc
-from util.io.preprocessing import *
+import re
+from autoreject import get_rejection_threshold, validation_curve
 
-def main(sub, task, run) -> None:
+def main(sub) -> None:
+    task = 'expectationsABR'
+
     # Constants
     BIDS_ROOT = '../data/bids'
     DERIV_ROOT = '../data/bids/derivatives'
-    LOWPASS = 300
-    FS = 5000
+    LOWPASS = 3000
+    HIGHPASS = 100
 
-    # Import data
     print("---------- Import data ----------")
-    print(sub, task, run)
-    raw = import_bids_data(BIDS_ROOT, sub, task, run)
-    events, event_ids = read_events(raw)
-
-    # Create virtual EOGs
+    print(sub, task)
+    bids_path = BIDSPath(root = BIDS_ROOT,
+                        subject = sub,
+                        task = task,
+                        datatype = 'eeg',
+                        )
+    print(bids_path)
+    raw = read_raw_bids(bids_path, verbose = False)
     raw.load_data()
-    raw = create_eogs(raw)
+    raw = raw.pick_types(eeg = True)
+    events, events_ids = mne.events_from_annotations(raw)
 
-    if sub == '4':
-        raw = raw.drop_channels(['Ch64']) # drop channel with no coordinates for sub 4
+    print("---------- Filtering ----------")
+    raw = raw.filter(h_freq = LOWPASS, l_freq = HIGHPASS)
 
-    # Resampling and PREP
-    print("---------- Resampling and PREP ----------")
-    raw, bads = run_PREP(raw, sub, run, LOWPASS)
-    print(f"BADS: {bads}")
-    print(f"BADS from info: {raw.info['bads']}")
-    raw.info['bads'] = []
-    
-    # Run ICA on one copy of the data
-    print("---------- Run ICA on one copy of the data ----------")
-    raw_for_ica = bandpass(raw, None, 1)
-    raw = bandpass(raw, 270, 30)
+    print("---------- Epoch ----------")
+    epochs = mne.Epochs(
+        raw,
+        events,
+        tmin = -0.02,
+        tmax = 0.02,
+        baseline = None, # do NOT baseline correct the trials yet; we do that after ICA
+        event_id = event_ids, # remember which epochs are associated with which condition
+        preload = True # keep data in memory
+    )
 
-    epochs_for_ica = epoch(raw_for_ica, events, event_ids)
-    epochs = epoch(raw, events, event_ids)
-    del raw_for_ica
-    del raw
-    gc.collect()
-
-    ica = compute_ICA(epochs_for_ica) # run ICA on less aggressively filtered data
-    epochs, ica = apply_ICA(epochs_for_ica, epochs, ica) # apply ICA on more aggressively filtered data
-
-    # Baseline correct and reject trials
-    print("---------- Baseline correct and reject trials ----------")
-    epochs = baseline_correct(epochs)
-    epochs, thres = reject_trials(epochs)
-
-    # Save results and generate report
     print("---------- Save results and generate report ----------")
-    fpath, sink = get_save_path(DERIV_ROOT, sub, task, run)
-    save_and_generate_report(fpath, epochs, sink, sub, task, run, ica, bads, thres)
-    print("Saving results and report to: " + str(fpath))
-    
-    print(f"Number of channels: {len(epochs.ch_names)}")
+    sink = DataSink(DERIV_ROOT, 'preprocessing')
 
-__doc__ = "Usage: ./preprocess.py <sub> <task> <run>"
+    # save cleaned data
+    fpath = sink.get_path(
+                    subject = sub,
+                    task = task,
+                    desc = 'clean',
+                    suffix = 'epo', # this suffix is following MNE, not BIDS, naming conventions
+                    extension = 'fif.gz',
+                    )
+    epochs.save(fpath, overwrite = True)
+
+__doc__ = "Usage: ./preprocess.py <sub>"
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 2:
         print(__doc__)
         sys.exit(1)
     sub = sys.argv[1]
-    task = sys.argv[2]
-    run = sys.argv[3]
-    main(sub, task, run)
+    main(sub)
