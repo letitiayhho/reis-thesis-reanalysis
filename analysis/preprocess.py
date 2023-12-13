@@ -19,7 +19,7 @@ def main(sub) -> None:
     # Constants
     BIDS_ROOT = '../data/bids'
     DERIV_ROOT = '../data/bids/derivatives'
-    LOWPASS = 3000
+    LOWPASS = 2000
     HIGHPASS = 100
 
     print("---------- Import data ----------")
@@ -37,6 +37,8 @@ def main(sub) -> None:
 
     print("---------- Filtering ----------")
     raw = raw.filter(h_freq = LOWPASS, l_freq = HIGHPASS)
+    line_freqs = np.arange(60, 181, 60)
+    raw.notch_filter(line_freqs)
 
     print("---------- Epoch ----------")
     epochs = mne.Epochs(
@@ -48,6 +50,9 @@ def main(sub) -> None:
         event_id = event_ids, # remember which epochs are associated with which condition
         preload = True # keep data in memory
     )
+    
+    print("---------- Trial rejection ----------")
+    epochs.drop_bad(reject = dict(eeg = 35e-6))
 
     print("---------- Save results and generate report ----------")
     sink = DataSink(DERIV_ROOT, 'preprocessing')

@@ -11,19 +11,9 @@ def main(subs, skips) -> None:
     BIDS_ROOT = '../data/bids'
     DERIV_ROOT = '../data/bids/derivatives'
     layout = BIDSLayout(BIDS_ROOT, derivatives = False)
-    fpaths = layout.get(extension = 'eeg',
-                        return_type = 'filename')
-
-    for fp in glob.glob('../data/bids/sub-*/'):
-        regex = re.compile(r'\d+')
-        sub = regex.findall(fpath)[0]
-
-#         # skip if subject is already preprocessed
-#         save_fpath, sink = get_save_path(DERIV_ROOT, sub, task, run)
-#         if os.path.isfile(save_fpath) and sub not in subs:
-#             print(f"Subject {sub} run {run} is already preprocessed")
-#             continue
-
+    subs = layout.get_subjects()
+    
+    for sub in subs:
         print("subprocess.check_call(\"sbatch ./preprocess.py {sub}\" % (sub), shell=True)")
         subprocess.check_call("sbatch ./preprocess.py %s" % (sub), shell=True)
 
