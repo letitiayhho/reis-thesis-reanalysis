@@ -4,8 +4,7 @@ import os
 import sys
 import subprocess
 import argparse
-from util.io.preprocessing import get_save_path
-from util.io.iter_BIDSPaths import *
+from bids import BIDSLayout
 
 def main(subs, skips) -> None:
     BIDS_ROOT = '../data/bids'
@@ -14,8 +13,9 @@ def main(subs, skips) -> None:
     subs = layout.get_subjects()
     
     for sub in subs:
-        print("subprocess.check_call(\"sbatch ./preprocess.py {sub}\" % (sub), shell=True)")
-        subprocess.check_call("sbatch ./preprocess.py %s" % (sub), shell=True)
+        print(f"subprocess.check_call(\"sbatch ./preprocess.py sub\" % ({sub}), shell=True)")
+        #subprocess.check_call("sbatch ./preprocess.py %s" % (sub), shell=True)
+        subprocess.check_call("./preprocess.py %s" % (sub), shell=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run preprocess.py over given subjects')

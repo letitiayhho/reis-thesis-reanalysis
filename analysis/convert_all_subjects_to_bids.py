@@ -7,13 +7,15 @@ import re
 
 def main(subs, skips) -> None:
 
-    for fpath in glob.glob('../data/raw/*vhdr'):
+    for fpath in glob.glob('../data/raw/Subj*.vhdr'):
         # Get subject number
         regex = re.compile(r'\d+')
         sub = regex.findall(fpath)[0]
 
         # Run script on file
-        subprocess.check_call("sbatch ./convert_to_bids.py %s %s" % (fpath, sub), shell=True)
+        #subprocess.check_call("sbatch ./convert_to_bids.py %s %s" % (fpath, sub), shell=True)
+#         print(fpath, sub)
+        subprocess.check_call("./convert_to_bids.py %s %s" % (fpath, sub), shell=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run convert-to-bids.py over given subjects')

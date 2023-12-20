@@ -3,6 +3,7 @@
 #SBATCH --time=00:05:00 # 5 for most subs, 10 for the rest
 #SBATCH --partition=broadwl # broadwl for most subs, bigmem2 for rest
 #SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=32G # 50 enough for most subs, 80 for rest
 #SBATCH --mail-type=all
 #SBATCH --mail-user=letitiayhho@uchicago.edu
@@ -21,16 +22,18 @@ def main(fpath, sub) -> None:
     task = 'expectationsABR'
     RAW_DIR = '../data/raw/'
     BIDS_DIR = '../data/bids/'
-    MAPS_DIR = '../data/captrak/'
 
-    # load data with MNE function for your file format
+    # load data
     raw = mne.io.read_raw_brainvision(fpath)
     raw.load_data()
 
-    # add some info BIDS will want
+    # add line freq to info
     print("Add line_freq to raw.info")
     raw.info['line_freq'] = 60 # the power line frequency in the building we collected in
     
+    # Set channel types
+    raw.set_channel_types({'EP1': 'eeg', 'BIP1': 'stim'})
+
     # Extract events from raw file
     print("Set annotations")
     events, event_ids = mne.events_from_annotations(raw)
@@ -38,6 +41,26 @@ def main(fpath, sub) -> None:
     # Drop meaningless event name
     events = np.array(events)
     events = events[events[:,2] != event_ids['New Segment/'], :]
+    event_codes = events[:,2]
+    
+    # Rename events from random numbers to interpretable labels
+    event_codes = events[:,2]
+    event_names = {2: 'A-non-rand', 
+                   3: 'F-non-rand',
+                   4: 'G-non-rand',
+                   5: 'A-inv-rand',
+                   6: 'F-inv-rand',
+                   7: 'G-inv-rand',
+                   8: 'A-non-seq',
+                   9: 'F-non-seq',
+                   10: 'G-non-seq',
+                   11: 'A-inv-seq',
+                   12: 'F-inv-seq',
+                   13: 'G-inv-seq',
+                   14: 'noise', 
+                   15: 'noise'}
+    annot = mne.annotations_from_events(events, sfreq = raw.info['sfreq'], event_desc = event_names)
+    raw = raw.set_annotations(annot)
 
     # Get range of dates the BIDS specification will accept
     daysback_min, daysback_max = get_anonymization_daysback(raw)

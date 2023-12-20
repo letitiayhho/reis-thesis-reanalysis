@@ -11,7 +11,10 @@
 import sys
 import gc
 import re
-from autoreject import get_rejection_threshold, validation_curve
+import mne
+import numpy as np
+from mne_bids import BIDSPath, read_raw_bids
+from util.io.bids import DataSink
 
 def main(sub) -> None:
     task = 'expectationsABR'
@@ -33,19 +36,19 @@ def main(sub) -> None:
     raw = read_raw_bids(bids_path, verbose = False)
     raw.load_data()
     raw = raw.pick_types(eeg = True)
-    events, events_ids = mne.events_from_annotations(raw)
+    events, event_ids = mne.events_from_annotations(raw)
 
     print("---------- Filtering ----------")
-    raw = raw.filter(h_freq = LOWPASS, l_freq = HIGHPASS)
+    raw = raw.filter(h_freq = LOWPASS, l_freq = HIGHPASS, picks = ['EP1'])
     line_freqs = np.arange(60, 181, 60)
-    raw.notch_filter(line_freqs)
+    raw.notch_filter(line_freqs, picks = ['EP1'])
 
     print("---------- Epoch ----------")
     epochs = mne.Epochs(
         raw,
         events,
-        tmin = -0.02,
-        tmax = 0.02,
+        tmin = -0.1,
+        tmax = 0.1,
         baseline = None, # do NOT baseline correct the trials yet; we do that after ICA
         event_id = event_ids, # remember which epochs are associated with which condition
         preload = True # keep data in memory
@@ -55,7 +58,7 @@ def main(sub) -> None:
     epochs.drop_bad(reject = dict(eeg = 35e-6))
 
     print("---------- Save results and generate report ----------")
-    sink = DataSink(DERIV_ROOT, 'preprocessing')
+    sink = DataSink(DERIV_ROOT, 'preprocess')
 
     # save cleaned data
     fpath = sink.get_path(
